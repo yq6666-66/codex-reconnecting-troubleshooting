@@ -1,0 +1,22 @@
+# Operating system
+Thumbs.db
+Desktop.ini
+
+# Local logs and private diagnostics
+*.log
+*.har
+*.pcap
+*.pcapng
+diagnostics/
+
+# Secrets and local config
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Editor
+.vscode/
+.idea/
