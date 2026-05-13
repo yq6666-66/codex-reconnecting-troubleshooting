@@ -1,105 +1,150 @@
 # Codex Reconnecting Troubleshooting Guide
 
-中文 | Windows | Codex Desktop | Clash Verge / local proxy
+Windows 上 Codex Desktop 反复显示 `Reconnecting` 的排障和修复指南，适合使用 Clash Verge、Mihomo、V2RayN、Sing-box 等本地代理的用户。
 
-This repository collects practical ways to diagnose and fix repeated `Reconnecting` loops in Codex Desktop, especially when the root cause is unstable direct access, DNS pollution, or an app process that does not consistently inherit the Windows system proxy.
+目标是让新手也能照着做：先跑一键修复，再按结果排查。
 
-## Quick Fix
+## 新手直接操作
 
-If you are on Windows and use Clash Verge or a similar local proxy, first find the local HTTP proxy port. Common ports are `7890`, `7897`, and `10809`.
+### 第 1 步：下载这个仓库
 
-Then run PowerShell:
-
-```powershell
-.\scripts\set-proxy-env.ps1 -ProxyUrl "http://127.0.0.1:7897"
-```
-
-Fully quit Codex Desktop, confirm no `Codex.exe` or `codex.exe` process remains in Task Manager, then reopen Codex.
-
-## Why This Happens
-
-The `Reconnecting` message usually means the client is retrying a streaming connection. In affected environments, these are common causes:
-
-- DNS returns polluted or unreachable IP addresses for OpenAI domains.
-- Direct access to `api.openai.com:443` fails.
-- Windows system proxy is enabled, but one Codex helper process does not consistently use it.
-- The local proxy is running, but the selected proxy node is unstable for long-lived HTTPS streams.
-- WebSocket, HTTP/2, or long-running TLS connections are interrupted by the network path.
-
-## Diagnose
-
-Run:
+打开 PowerShell，运行：
 
 ```powershell
-.\scripts\diagnose-codex-network.ps1
+git clone https://github.com/19306069208/codex-reconnecting-troubleshooting.git
+cd codex-reconnecting-troubleshooting
 ```
 
-The script checks:
+如果没有安装 Git，也可以在 GitHub 页面点 `Code` -> `Download ZIP`，解压后在文件夹空白处右键，选择“在终端中打开”。
 
-- Windows system proxy.
-- User environment proxy variables.
-- Whether common local proxy ports are listening.
-- DNS resolution for OpenAI domains.
-- Direct TCP connectivity.
-- Connectivity through the configured proxy.
-- Current Codex network connections.
+### 第 2 步：确认代理软件已打开
 
-## Fix Methods
+先打开 Clash Verge 或其它代理软件，并确认：
 
-### 1. Set Proxy Environment Variables
+- 系统代理已经开启。
+- 能正常访问 GitHub 或 ChatGPT 网页。
+- 常见本地代理端口是 `7897`、`7890`、`10809` 或 `1080`。
 
-Some desktop helper processes read `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` more reliably than the Windows GUI proxy setting.
+不知道端口也没关系，下一步脚本会自动检测。
+
+### 第 3 步：运行一键修复
 
 ```powershell
-.\scripts\set-proxy-env.ps1 -ProxyUrl "http://127.0.0.1:7897"
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
 ```
 
-Restart Codex after running this.
+如果你已经知道自己的代理端口，例如 Clash Verge 是 `7897`，可以指定：
 
-### 2. Keep Localhost Out of Proxy
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:7897"
+```
 
-The scripts set:
+### 第 4 步：完全重启 Codex
+
+脚本执行完成后，必须完全退出 Codex Desktop。
+
+建议：
+
+1. 关闭 Codex 窗口。
+2. 打开任务管理器。
+3. 确认没有 `Codex.exe` 或 `codex.exe`。
+4. 重新打开 Codex。
+
+## 怎么判断成功
+
+再次向 Codex 提问。如果不再反复 `Reconnecting`，说明已经修复。
+
+如果仍然重连，运行诊断脚本：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1
+```
+
+重点看两处：
+
+- `Direct TCP Connectivity` 如果失败，说明直连 OpenAI 不可靠。
+- `Proxy HTTPS Test` 如果 `api.openai.com/v1/models` 返回 `401 Unauthorized`，说明代理路径可以连到 OpenAI API。这里没有传 API key，`401` 是正常结果。
+
+## 常见问题
+
+### 为什么会一直 Reconnecting
+
+通常不是模型在“思考很多次”，而是 Codex 和后端的流式连接断开后自动重试。常见原因包括：
+
+- DNS 返回了不可用或被污染的 OpenAI 地址。
+- 直连 `api.openai.com:443` 失败。
+- Windows 系统代理开了，但某些 Codex 后台进程没有稳定走系统代理。
+- 代理节点能打开网页，但长连接不稳定。
+- HTTP/2、WebSocket 或 TLS 长连接被网络路径中断。
+
+### 一键修复脚本做了什么
+
+脚本会检测可用代理，然后写入当前 Windows 用户的环境变量：
 
 ```text
-NO_PROXY=localhost,127.0.0.1,::1
+HTTP_PROXY
+HTTPS_PROXY
+ALL_PROXY
+NO_PROXY
 ```
 
-This prevents local MCP tools, dev servers, and plugin helpers from being routed through the proxy.
+这会让更多命令行程序和后台进程明确走本地代理。
 
-### 3. Fix DNS or Avoid Direct DNS
+### 为什么要设置 NO_PROXY
 
-If `Resolve-DnsName api.openai.com` returns an unexpected or unreachable IP, direct access may fail even if your browser appears to work.
+`NO_PROXY=localhost,127.0.0.1,::1` 可以避免本地开发服务、MCP 工具、插件服务被错误送进代理。
 
-Recommended actions:
+### 运行脚本提示禁止执行怎么办
 
-- Prefer proxy mode that performs remote DNS resolution.
-- In Clash Verge, try TUN mode if normal system proxy mode is not enough.
-- Switch to a more reliable DNS provider in the proxy client.
-- Avoid relying on direct system DNS for OpenAI domains in restricted networks.
-
-### 4. Switch Proxy Node
-
-If proxy tests connect but long answers still reconnect, switch to a node with better TLS and streaming stability. A node can pass a basic `curl -I` test but still drop long-lived response streams.
-
-### 5. Restart Codex Completely
-
-After changing proxy variables or system proxy settings, fully exit Codex. Environment variables are read when a process starts, so existing processes keep old values.
-
-## Undo
-
-To remove the user-level proxy environment variables:
+用下面这种方式运行，不需要永久修改系统策略：
 
 ```powershell
-.\scripts\clear-proxy-env.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
 ```
 
-Restart Codex after clearing them.
+### 脚本找不到代理怎么办
 
-## Notes
+手动指定端口：
 
-- A `401 Unauthorized` response from `https://api.openai.com/v1/models` without an API key is a useful sign: it means the HTTPS route reached OpenAI correctly.
-- A `403 Forbidden` response from a browser-only ChatGPT endpoint can be normal because Cloudflare may challenge non-browser clients.
-- Do not commit API keys, tokens, proxy subscription URLs, or private node information.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:7897"
+```
+
+如果还是失败，打开代理软件检查 HTTP 端口，或者尝试 `7890`、`10809`。
+
+### 代理测试通过但还是重连怎么办
+
+优先尝试：
+
+1. 换一个更稳定的代理节点。
+2. 在 Clash Verge 开启 TUN 模式。
+3. 确认 OpenAI、GitHub、Cloudflare 相关域名命中代理规则。
+4. 完全重启 Codex，而不是只关闭窗口。
+
+## 文件说明
+
+- `scripts/fix-codex-reconnecting.ps1`：新手优先使用的一键修复脚本。
+- `scripts/diagnose-codex-network.ps1`：详细诊断网络、DNS、代理和 Codex 连接。
+- `scripts/set-proxy-env.ps1`：手动设置代理环境变量。
+- `scripts/clear-proxy-env.ps1`：清理代理环境变量并回滚。
+- `docs/beginner-guide.md`：图文式的新手操作流程。
+- `docs/windows-codex-reconnecting.md`：更详细的原理和排障手册。
+
+## 回滚
+
+如果你想撤销这个仓库设置过的用户级代理环境变量：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\clear-proxy-env.ps1
+```
+
+然后完全重启 Codex。
+
+## 安全提醒
+
+- 不要提交 OpenAI API key、GitHub token、Clash 订阅链接、代理节点信息。
+- 分享诊断输出前，检查是否包含用户名、内网 IP、cookie 或 token。
+- 本仓库脚本只修改当前 Windows 用户的代理环境变量，不会修改系统文件。
 
 ## License
 
