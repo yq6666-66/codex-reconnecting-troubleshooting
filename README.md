@@ -1,83 +1,86 @@
 # Codex Reconnecting Troubleshooting Guide
 
-Windows 上 Codex Desktop 反复显示 `Reconnecting` 的排障和修复指南，适合使用 Clash Verge、Mihomo、V2RayN、Sing-box 等本地代理的用户。
+Windows 上 Codex Desktop 反复显示 `Reconnecting` 的排障和修复指南，适合使用 Clash Verge、Clash Verge Rev、Mihomo、V2RayN、Sing-box 等本地代理的用户。
 
-目标是让新手也能照着做：先跑一键修复，再按结果排查。
+目标很朴素：让新手也能照着做，不需要先理解一堆网络术语。
 
-## 新手直接操作
+## 新手优先路线
 
-### 第 1 步：下载这个仓库
+### 1. 下载仓库
 
-打开 PowerShell，运行：
+会用 Git：
 
 ```powershell
 git clone https://github.com/19306069208/codex-reconnecting-troubleshooting.git
 cd codex-reconnecting-troubleshooting
 ```
 
-如果没有安装 Git，也可以在 GitHub 页面点 `Code` -> `Download ZIP`，解压后在文件夹空白处右键，选择“在终端中打开”。
+不会用 Git：
 
-### 第 2 步：确认代理软件已打开
+1. 打开仓库页面。
+2. 点绿色 `Code` 按钮。
+3. 点 `Download ZIP`。
+4. 解压后，在文件夹空白处右键，选择“在终端中打开”。
 
-先打开 Clash Verge 或其它代理软件，并确认：
-
-- 系统代理已经开启。
-- 能正常访问 GitHub 或 ChatGPT 网页。
-- 常见本地代理端口是 `7897`、`7890`、`10809` 或 `1080`。
-
-不知道端口也没关系，下一步脚本会自动检测。
-
-### 第 3 步：运行一键修复
+### 2. 先跑一键修复
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
 ```
 
-如果你已经知道自己的代理端口，例如 Clash Verge 是 `7897`，可以指定：
+如果你知道 Clash Verge 的 HTTP 端口，比如 `7897`：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:7897"
 ```
 
-### 第 4 步：完全重启 Codex
+### 3. 完全重启 Codex
 
-脚本执行完成后，必须完全退出 Codex Desktop。
+关闭 Codex 窗口后，再打开任务管理器，确认没有 `Codex.exe` 或 `codex.exe`。然后重新打开 Codex。
 
-建议：
+## 如果还是 Reconnecting
 
-1. 关闭 Codex 窗口。
-2. 打开任务管理器。
-3. 确认没有 `Codex.exe` 或 `codex.exe`。
-4. 重新打开 Codex。
+按这个顺序继续：
 
-## 怎么判断成功
+1. 在代理软件里换一个稳定节点。
+2. 完全重启 Codex。
+3. 运行诊断脚本。
+4. 如果 Codex 已经走代理但仍然断，开启 TUN 模式。
 
-再次向 Codex 提问。如果不再反复 `Reconnecting`，说明已经修复。
-
-如果仍然重连，运行诊断脚本：
+诊断脚本：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1
 ```
 
-重点看两处：
+TUN 模式新手指南：
 
-- `Direct TCP Connectivity` 如果失败，说明直连 OpenAI 不可靠。
-- `Proxy HTTPS Test` 如果 `api.openai.com/v1/models` 返回 `401 Unauthorized`，说明代理路径可以连到 OpenAI API。这里没有传 API key，`401` 是正常结果。
+- [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
 
-## 常见问题
+## 怎么判断问题在哪里
 
-### 为什么会一直 Reconnecting
+| 现象 | 大概率原因 | 处理 |
+| --- | --- | --- |
+| `api.openai.com` 直连失败 | DNS 或直连网络不可用 | 使用代理或 TUN，不要依赖直连 |
+| 代理访问 OpenAI 返回 `401 Unauthorized` | 代理路径能连到 OpenAI API | 这是好结果，重启 Codex 后再试 |
+| 代理偶发 TLS 握手失败 | 节点或长连接不稳定 | 换节点，必要时开 TUN |
+| Codex 连接到外部 IP 而不是 `127.0.0.1` | 有进程绕过代理 | 开 TUN，或重启 Codex |
+| Codex 已连接 `127.0.0.1:7897` 但仍重连 | 节点、规则或长连接稳定性问题 | 换节点，开 TUN，检查规则 |
 
-通常不是模型在“思考很多次”，而是 Codex 和后端的流式连接断开后自动重试。常见原因包括：
+## 脚本说明
 
-- DNS 返回了不可用或被污染的 OpenAI 地址。
-- 直连 `api.openai.com:443` 失败。
-- Windows 系统代理开了，但某些 Codex 后台进程没有稳定走系统代理。
-- 代理节点能打开网页，但长连接不稳定。
-- HTTP/2、WebSocket 或 TLS 长连接被网络路径中断。
+- `scripts/fix-codex-reconnecting.ps1`：新手优先使用的一键修复脚本。
+- `scripts/diagnose-codex-network.ps1`：检查系统代理、环境变量、DNS、OpenAI 连通性、Codex 连接和疑似 TUN 网卡。
+- `scripts/set-proxy-env.ps1`：手动设置代理环境变量。
+- `scripts/clear-proxy-env.ps1`：回滚代理环境变量。
 
-### 一键修复脚本做了什么
+## 文档说明
+
+- [新手操作指南](./docs/beginner-guide.md)
+- [Windows Codex Reconnecting 排障手册](./docs/windows-codex-reconnecting.md)
+- [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
+
+## 一键修复做了什么
 
 脚本会检测可用代理，然后写入当前 Windows 用户的环境变量：
 
@@ -88,57 +91,30 @@ ALL_PROXY
 NO_PROXY
 ```
 
-这会让更多命令行程序和后台进程明确走本地代理。
+这会让更多命令行程序和后台进程明确走本地代理。`NO_PROXY=localhost,127.0.0.1,::1` 会避免本地开发服务、MCP 工具和插件服务被错误送进代理。
 
-### 为什么要设置 NO_PROXY
+## TUN 模式什么时候用
 
-`NO_PROXY=localhost,127.0.0.1,::1` 可以避免本地开发服务、MCP 工具、插件服务被错误送进代理。
+先别急着开 TUN。一般先用一键修复和重启 Codex。
 
-### 运行脚本提示禁止执行怎么办
+需要 TUN 的典型情况：
 
-用下面这种方式运行，不需要永久修改系统策略：
+- Codex 明明设置了代理，还是会绕过代理。
+- 代理测试成功，但长回答持续重连。
+- DNS 返回异常地址，直连 OpenAI 一直失败。
+- 你希望命令行、Electron 应用和后台进程都更稳定地走代理规则。
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
-```
-
-### 脚本找不到代理怎么办
-
-手动指定端口：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:7897"
-```
-
-如果还是失败，打开代理软件检查 HTTP 端口，或者尝试 `7890`、`10809`。
-
-### 代理测试通过但还是重连怎么办
-
-优先尝试：
-
-1. 换一个更稳定的代理节点。
-2. 在 Clash Verge 开启 TUN 模式。
-3. 确认 OpenAI、GitHub、Cloudflare 相关域名命中代理规则。
-4. 完全重启 Codex，而不是只关闭窗口。
-
-## 文件说明
-
-- `scripts/fix-codex-reconnecting.ps1`：新手优先使用的一键修复脚本。
-- `scripts/diagnose-codex-network.ps1`：详细诊断网络、DNS、代理和 Codex 连接。
-- `scripts/set-proxy-env.ps1`：手动设置代理环境变量。
-- `scripts/clear-proxy-env.ps1`：清理代理环境变量并回滚。
-- `docs/beginner-guide.md`：图文式的新手操作流程。
-- `docs/windows-codex-reconnecting.md`：更详细的原理和排障手册。
+详细步骤看：[Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)。
 
 ## 回滚
 
-如果你想撤销这个仓库设置过的用户级代理环境变量：
+如果修复后影响了其它工具：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\clear-proxy-env.ps1
 ```
 
-然后完全重启 Codex。
+如果是 TUN 导致网络异常，先关闭 Clash Verge 里的 `TUN Mode`，再重启 Clash 和 Codex。
 
 ## 安全提醒
 

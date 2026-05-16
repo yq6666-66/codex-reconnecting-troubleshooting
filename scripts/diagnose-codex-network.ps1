@@ -114,6 +114,20 @@ if ($codex) {
     Write-Host "No Codex process is running."
 }
 
+Write-Section "Possible TUN Adapters"
+$tunAdapters = Get-NetAdapter -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.Name -match "tun|meta|mihomo|clash" -or
+        $_.InterfaceDescription -match "tun|meta|mihomo|clash"
+    } |
+    Select-Object Name, InterfaceDescription, Status, LinkSpeed, MacAddress
+
+if ($tunAdapters) {
+    $tunAdapters | Format-Table -AutoSize
+} else {
+    Write-Host "No obvious TUN adapter was found. This is normal if TUN mode is off."
+}
+
 Write-Section "Interpretation"
 Write-Host "If direct TCP fails but proxy HTTPS returns 401 from api.openai.com, the proxy path is working and Codex should be forced to use it."
 Write-Host "If proxy HTTPS also fails or TLS handshakes fail repeatedly, switch proxy nodes or enable TUN mode in your proxy client."
