@@ -1,8 +1,10 @@
 [CmdletBinding()]
 param(
     [string]$ProxyUrl,
-    [int[]]$CommonProxyPorts = @(7897, 7890, 10809, 1080),
-    [string]$NoProxy = "localhost,127.0.0.1,::1"
+    [int[]]$CommonHttpPorts = @(7897, 7890, 10809, 10809, 2080, 8080, 8888),
+    [int[]]$CommonSocksPorts = @(7898, 7891, 10808, 1080, 2081),
+    [string]$NoProxy = "localhost,127.0.0.1,::1",
+    [int]$CurlTimeoutSeconds = 12
 )
 
 $ErrorActionPreference = "Continue"
@@ -24,6 +26,8 @@ function Normalize-ProxyUrl {
         $Value = $Matches[2]
     } elseif ($Value -match "(^|;)http=([^;]+)") {
         $Value = $Matches[2]
+    } elseif ($Value -match "(^|;)socks=([^;]+)") {
+        $Value = "socks5h://$($Matches[2])"
     }
 
     if ($Value -notmatch "^[a-zA-Z][a-zA-Z0-9+.-]*://") {
@@ -31,6 +35,51 @@ function Normalize-ProxyUrl {
     }
 
     return $Value
+}
+
+function New-ProxyCandidates {
+    param(
+        [int[]]$HttpPorts,
+        [int[]]$SocksPorts
+    )
+
+    $items = @()
+    foreach ($port in ($HttpPorts | Select-Object -Unique)) {
+        $items += [PSCustomObject]@{
+            Url = "http://127.0.0.1:$port"
+            Kind = "HTTP"
+            Port = $port
+        }
+    }
+    foreach ($port in ($SocksPorts | Select-Object -Unique)) {
+        $items += [PSCustomObject]@{
+            Url = "socks5h://127.0.0.1:$port"
+            Kind = "SOCKS5"
+            Port = $port
+        }
+    }
+    return $items
+}
+
+function Test-TcpPort {
+    param(
+        [string]$HostName,
+        [int]$Port,
+        [int]$TimeoutMilliseconds = 700
+    )
+
+    $client = [System.Net.Sockets.TcpClient]::new()
+    try {
+        $task = $client.ConnectAsync($HostName, $Port)
+        if (-not $task.Wait($TimeoutMilliseconds)) {
+            return $false
+        }
+        return $client.Connected
+    } catch {
+        return $false
+    } finally {
+        $client.Dispose()
+    }
 }
 
 function Test-ProxyUrl {
@@ -41,7 +90,7 @@ function Test-ProxyUrl {
     }
 
     try {
-        curl.exe -sS -I --max-time 20 -x $Url "https://api.openai.com/v1/models" | Out-Null
+        curl.exe -sS -I --max-time $CurlTimeoutSeconds -x $Url "https://api.openai.com/v1/models" | Out-Null
         return ($LASTEXITCODE -eq 0)
     } catch {
         return $false
@@ -61,12 +110,14 @@ if ([string]::IsNullOrWhiteSpace($ProxyUrl)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($ProxyUrl)) {
-    foreach ($port in $CommonProxyPorts) {
-        $result = Test-NetConnection 127.0.0.1 -Port $port -WarningAction SilentlyContinue
-        if ($result.TcpTestSucceeded) {
-            $ProxyUrl = "http://127.0.0.1:$port"
-            Write-Host "Found listening local proxy port: $port"
-            break
+    foreach ($candidate in (New-ProxyCandidates -HttpPorts $CommonHttpPorts -SocksPorts $CommonSocksPorts)) {
+        if (Test-TcpPort -HostName "127.0.0.1" -Port $candidate.Port) {
+            Write-Host "Found listening local $($candidate.Kind) proxy candidate: $($candidate.Url)"
+            if (Test-ProxyUrl $candidate.Url) {
+                $ProxyUrl = $candidate.Url
+                Write-Host "Selected working proxy candidate: $ProxyUrl"
+                break
+            }
         }
     }
 }
@@ -78,6 +129,7 @@ if ([string]::IsNullOrWhiteSpace($ProxyUrl)) {
     Write-Host "Open your proxy app, enable system proxy, then rerun this script."
     Write-Host "Or specify it manually, for example:"
     Write-Host 'powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:7897"'
+    Write-Host 'powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "socks5h://127.0.0.1:10808"'
     exit 1
 }
 

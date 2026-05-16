@@ -8,7 +8,7 @@
 
 - Codex Desktop 回答前反复显示 `Reconnecting`。
 - 每次要等很多次重连才有回答。
-- 你在 Windows 上使用 Clash Verge、Clash Verge Rev 或类似代理软件。
+- 你在 Windows 上使用 Clash Verge、v2rayN、sing-box、Hiddify、NekoRay、WireGuard、OpenVPN 或类似代理/VPN 软件。
 
 ## 准备工作
 
@@ -64,6 +64,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -P
 
 如果还不行，打开 Clash Verge，找到 HTTP 代理端口，把端口替换进去。
 
+如果你用的是 v2rayN，常见 HTTP 端口是 `10809`：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:10809"
+```
+
+如果工具只提供 SOCKS5 端口，使用 `socks5h://`：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "socks5h://127.0.0.1:10808"
+```
+
 ## 如何完全重启 Codex
 
 只点窗口右上角关闭有时不够。建议这样做：
@@ -85,6 +97,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -P
 TUN 开启方法看这里：
 
 - [Clash Verge TUN 模式开启指南](./tun-mode-clash-verge.md)
+- [其它 VPN 和代理工具怎么处理](./other-vpn-and-proxy-tools.md)
 
 ## 什么时候需要 TUN
 
@@ -105,6 +118,12 @@ TUN 开启方法看这里：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1
+```
+
+如果这条命令卡很久，改用快速模式：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1 -SkipDirectTcp
 ```
 
 把输出中这几块保存下来：
@@ -136,6 +155,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1
 ### Possible TUN Adapters 为空
 
 这通常说明 TUN 没开，或者虚拟网卡名称不是脚本能识别的常见名称。先按 TUN 指南检查 Clash Verge 里的开关。
+
+### 浏览器能用，但 Codex 不能用
+
+如果你只用了浏览器插件代理，这很正常。浏览器插件通常只管浏览器，管不到 Codex Desktop。你需要使用系统代理、本地 HTTP/SOCKS 端口，或者 VPN/TUN 模式。
 
 ## 回滚
 

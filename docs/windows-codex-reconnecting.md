@@ -1,6 +1,6 @@
 # Windows Codex Reconnecting 排障手册
 
-这份手册整理 Windows 上 Codex Desktop 反复出现 `Reconnecting` 的处理方法。重点覆盖 Clash Verge、本地代理、DNS 污染、环境变量代理、TUN 模式和长连接不稳定。
+这份手册整理 Windows 上 Codex Desktop 反复出现 `Reconnecting` 的处理方法。重点覆盖 Clash Verge、v2rayN、sing-box、Hiddify、NekoRay、本地代理、DNS 污染、环境变量代理、TUN/VPN 模式和长连接不稳定。
 
 如果你是新手，先看 [beginner-guide.md](./beginner-guide.md)。
 
@@ -46,10 +46,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:7897"
 ```
 
+手动指定 SOCKS5：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "socks5h://127.0.0.1:10808"
+```
+
 ## 详细诊断
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1
+```
+
+快速模式：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1 -SkipDirectTcp
 ```
 
 如果你已经知道代理地址：
@@ -70,6 +82,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1 -P
 | `Codex TCP Connections` | 直接连外部 IP 且卡住 | 有进程可能绕过代理 | 开 TUN 或重启 Codex |
 | `Possible TUN Adapters` | 看到 Meta/Mihomo/Clash/TUN | 可能已经启用 TUN 虚拟网卡 | 再检查 Clash 连接列表 |
 | `Possible TUN Adapters` | 为空 | 没发现常见 TUN 网卡 | 如果仍重连，按 TUN 指南开启 |
+
+## 先判断你用的是哪种工具
+
+| 工具类型 | 例子 | 对 Codex 的影响 | 推荐处理 |
+| --- | --- | --- | --- |
+| 浏览器插件 | Chrome/Edge 代理扩展 | 通常只管浏览器 | 换系统代理或 TUN/VPN |
+| 本地 HTTP 代理 | Clash、v2rayN、sing-box | 可以用环境变量让 Codex 走代理 | 优先使用 `http://127.0.0.1:端口` |
+| 本地 SOCKS5 代理 | v2rayN、NekoRay、Hiddify | 可以用 `socks5h://` | 用 `socks5h://127.0.0.1:端口` |
+| TUN/VPN | Clash TUN、sing-box TUN、WireGuard、OpenVPN | 接管系统流量 | 检查 DNS、路由和分流 |
+| 公司 VPN | 企业 VPN 客户端 | 可能限制外网或劫持 DNS | 必要时断开或配置分流 |
+
+详细说明看：[其它 VPN 和代理工具怎么处理](./other-vpn-and-proxy-tools.md)。
 
 ## 方法一：设置用户级代理环境变量
 

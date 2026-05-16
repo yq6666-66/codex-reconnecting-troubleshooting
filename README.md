@@ -1,6 +1,6 @@
 # Codex Reconnecting Troubleshooting Guide
 
-Windows 上 Codex Desktop 反复显示 `Reconnecting` 的排障和修复指南，适合使用 Clash Verge、Clash Verge Rev、Mihomo、V2RayN、Sing-box 等本地代理的用户。
+Windows 上 Codex Desktop 反复显示 `Reconnecting` 的排障和修复指南，适合使用 Clash Verge、Clash Verge Rev、Mihomo、V2RayN、sing-box、Hiddify、NekoRay、WireGuard、OpenVPN、公司 VPN 等代理或 VPN 工具的用户。
 
 目标很朴素：让新手也能照着做，不需要先理解一堆网络术语。
 
@@ -28,10 +28,16 @@ cd codex-reconnecting-troubleshooting
 powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
 ```
 
-如果你知道 Clash Verge 的 HTTP 端口，比如 `7897`：
+如果你知道代理工具的 HTTP 端口，比如 `7897`：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "http://127.0.0.1:7897"
+```
+
+如果你的工具只有 SOCKS5 端口，比如 v2rayN 常见的 `10808`：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -ProxyUrl "socks5h://127.0.0.1:10808"
 ```
 
 ### 3. 完全重启 Codex
@@ -53,9 +59,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1 -P
 powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1
 ```
 
+如果直连测试等很久，可以用快速模式跳过直连 TCP：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1 -SkipDirectTcp
+```
+
 TUN 模式新手指南：
 
 - [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
+- [其它 VPN 和代理工具怎么处理](./docs/other-vpn-and-proxy-tools.md)
 
 ## 怎么判断问题在哪里
 
@@ -66,11 +79,13 @@ TUN 模式新手指南：
 | 代理偶发 TLS 握手失败 | 节点或长连接不稳定 | 换节点，必要时开 TUN |
 | Codex 连接到外部 IP 而不是 `127.0.0.1` | 有进程绕过代理 | 开 TUN，或重启 Codex |
 | Codex 已连接 `127.0.0.1:7897` 但仍重连 | 节点、规则或长连接稳定性问题 | 换节点，开 TUN，检查规则 |
+| 浏览器能用但 Codex 不能用 | 可能只是浏览器插件代理 | 换系统代理、本地端口或 TUN/VPN |
+| 只有 VPN 没有本地端口 | 不是 HTTP 代理模式 | 确认 VPN 能访问 OpenAI，必要时配置分流 |
 
 ## 脚本说明
 
 - `scripts/fix-codex-reconnecting.ps1`：新手优先使用的一键修复脚本。
-- `scripts/diagnose-codex-network.ps1`：检查系统代理、环境变量、DNS、OpenAI 连通性、Codex 连接和疑似 TUN 网卡。
+- `scripts/diagnose-codex-network.ps1`：检查系统代理、环境变量、常见 HTTP/SOCKS 端口、DNS、OpenAI 连通性、Codex 连接和疑似 TUN 网卡。
 - `scripts/set-proxy-env.ps1`：手动设置代理环境变量。
 - `scripts/clear-proxy-env.ps1`：回滚代理环境变量。
 
@@ -79,6 +94,7 @@ TUN 模式新手指南：
 - [新手操作指南](./docs/beginner-guide.md)
 - [Windows Codex Reconnecting 排障手册](./docs/windows-codex-reconnecting.md)
 - [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
+- [其它 VPN 和代理工具怎么处理](./docs/other-vpn-and-proxy-tools.md)
 
 ## 一键修复做了什么
 
@@ -105,6 +121,8 @@ NO_PROXY
 - 你希望命令行、Electron 应用和后台进程都更稳定地走代理规则。
 
 详细步骤看：[Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)。
+
+如果你用的不是 Clash Verge，看：[其它 VPN 和代理工具怎么处理](./docs/other-vpn-and-proxy-tools.md)。
 
 ## 回滚
 

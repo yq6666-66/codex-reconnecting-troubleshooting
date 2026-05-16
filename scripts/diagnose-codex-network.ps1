@@ -1,8 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$ProxyUrl,
-    [int[]]$CommonProxyPorts = @(7897, 7890, 10809, 1080),
-    [string[]]$Domains = @("api.openai.com", "chatgpt.com")
+    [int[]]$CommonHttpPorts = @(7897, 7890, 10809, 2080, 8080, 8888),
+    [int[]]$CommonSocksPorts = @(7898, 7891, 10808, 1080, 2081),
+    [string[]]$Domains = @("api.openai.com", "chatgpt.com"),
+    [int]$CurlTimeoutSeconds = 12,
+    [switch]$SkipDirectTcp
 )
 
 $ErrorActionPreference = "Continue"
@@ -22,11 +25,58 @@ function Get-ProxyUri {
         $Value = $Matches[2]
     } elseif ($Value -match "(^|;)http=([^;]+)") {
         $Value = $Matches[2]
+    } elseif ($Value -match "(^|;)socks=([^;]+)") {
+        $Value = "socks5h://$($Matches[2])"
     }
     if ($Value -notmatch "^[a-zA-Z][a-zA-Z0-9+.-]*://") {
         return "http://$Value"
     }
     return $Value
+}
+
+function New-ProxyCandidates {
+    param(
+        [int[]]$HttpPorts,
+        [int[]]$SocksPorts
+    )
+
+    $items = @()
+    foreach ($port in ($HttpPorts | Select-Object -Unique)) {
+        $items += [PSCustomObject]@{
+            Url = "http://127.0.0.1:$port"
+            Kind = "HTTP"
+            Port = $port
+        }
+    }
+    foreach ($port in ($SocksPorts | Select-Object -Unique)) {
+        $items += [PSCustomObject]@{
+            Url = "socks5h://127.0.0.1:$port"
+            Kind = "SOCKS5"
+            Port = $port
+        }
+    }
+    return $items
+}
+
+function Test-TcpPort {
+    param(
+        [string]$HostName,
+        [int]$Port,
+        [int]$TimeoutMilliseconds = 700
+    )
+
+    $client = [System.Net.Sockets.TcpClient]::new()
+    try {
+        $task = $client.ConnectAsync($HostName, $Port)
+        if (-not $task.Wait($TimeoutMilliseconds)) {
+            return $false
+        }
+        return $client.Connected
+    } catch {
+        return $false
+    } finally {
+        $client.Dispose()
+    }
 }
 
 Write-Section "Windows System Proxy"
@@ -52,12 +102,14 @@ $envResults = foreach ($name in $envNames) {
 $envResults | Format-Table -AutoSize
 
 Write-Section "Common Local Proxy Ports"
-$portResults = foreach ($port in $CommonProxyPorts) {
-    $result = Test-NetConnection 127.0.0.1 -Port $port -WarningAction SilentlyContinue
+$portResults = foreach ($candidate in (New-ProxyCandidates -HttpPorts $CommonHttpPorts -SocksPorts $CommonSocksPorts)) {
+    $port = $candidate.Port
     [PSCustomObject]@{
         Host = "127.0.0.1"
         Port = $port
-        TcpTestSucceeded = $result.TcpTestSucceeded
+        Kind = $candidate.Kind
+        ProxyUrl = $candidate.Url
+        TcpTestSucceeded = (Test-TcpPort -HostName "127.0.0.1" -Port $port)
     }
 }
 $portResults | Format-Table -AutoSize
@@ -71,16 +123,20 @@ foreach ($domain in $Domains) {
 }
 
 Write-Section "Direct TCP Connectivity"
-$directResults = foreach ($domain in $Domains) {
-    $result = Test-NetConnection $domain -Port 443 -WarningAction SilentlyContinue
-    [PSCustomObject]@{
-        Domain = $domain
-        RemoteAddress = $result.RemoteAddress
-        TcpTestSucceeded = $result.TcpTestSucceeded
-        PingSucceeded = $result.PingSucceeded
+if ($SkipDirectTcp) {
+    Write-Host "Skipped. Direct TCP tests can be slow on restricted networks."
+} else {
+    $directResults = foreach ($domain in $Domains) {
+        $result = Test-NetConnection $domain -Port 443 -WarningAction SilentlyContinue
+        [PSCustomObject]@{
+            Domain = $domain
+            RemoteAddress = $result.RemoteAddress
+            TcpTestSucceeded = $result.TcpTestSucceeded
+            PingSucceeded = $result.PingSucceeded
+        }
     }
+    $directResults | Format-Table -AutoSize
 }
-$directResults | Format-Table -AutoSize
 
 if ([string]::IsNullOrWhiteSpace($ProxyUrl)) {
     $ProxyUrl = Get-ProxyUri $internetSettings.ProxyServer
@@ -94,7 +150,7 @@ if ([string]::IsNullOrWhiteSpace($ProxyUrl)) {
     Write-Host "Using proxy: $ProxyUrl"
     foreach ($url in @("https://api.openai.com/v1/models", "https://chatgpt.com")) {
         Write-Host "-- $url"
-        curl.exe -sS -I --max-time 20 -x $ProxyUrl $url
+        curl.exe -sS -I --max-time $CurlTimeoutSeconds -x $ProxyUrl $url
     }
 }
 
