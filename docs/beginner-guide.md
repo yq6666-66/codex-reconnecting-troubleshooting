@@ -25,7 +25,7 @@
 打开 PowerShell，复制下面三行：
 
 ```powershell
-git clone https://github.com/19306069208/codex-reconnecting-troubleshooting.git
+git clone https://github.com/yq6666-66/codex-reconnecting-troubleshooting.git
 cd codex-reconnecting-troubleshooting
 powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
 ```
@@ -34,7 +34,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\fix-codex-reconnecting.ps1
 
 ## 方法 B：你不会用 Git
 
-1. 打开这个页面：<https://github.com/19306069208/codex-reconnecting-troubleshooting>
+1. 打开这个页面：<https://github.com/yq6666-66/codex-reconnecting-troubleshooting>
 2. 点击绿色 `Code` 按钮。
 3. 点击 `Download ZIP`。
 4. 解压 ZIP 文件。

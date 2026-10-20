@@ -11,7 +11,7 @@ Windows 上 Codex Desktop 反复显示 `Reconnecting` 的排障和修复指南�
 会用 Git：
 
 ```powershell
-git clone https://github.com/19306069208/codex-reconnecting-troubleshooting.git
+git clone https://github.com/yq6666-66/codex-reconnecting-troubleshooting.git
 cd codex-reconnecting-troubleshooting
 ```
 
