@@ -67,8 +67,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\diagnose-codex-network.ps1 -S
 
 TUN 模式新手指南：
 
-- [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
-- [其它 VPN 和代理工具怎么处理](./docs/other-vpn-and-proxy-tools.md)
+1. [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
+2. [其它 VPN 和代理工具怎么处理](./docs/other-vpn-and-proxy-tools.md)
 
 ## 怎么判断问题在哪里
 
@@ -84,17 +84,17 @@ TUN 模式新手指南：
 
 ## 脚本说明
 
-- `scripts/fix-codex-reconnecting.ps1`：新手优先使用的一键修复脚本。
-- `scripts/diagnose-codex-network.ps1`：检查系统代理、环境变量、常见 HTTP/SOCKS 端口、DNS、OpenAI 连通性、Codex 连接和疑似 TUN 网卡。
-- `scripts/set-proxy-env.ps1`：手动设置代理环境变量。
-- `scripts/clear-proxy-env.ps1`：回滚代理环境变量。
+1. `scripts/fix-codex-reconnecting.ps1`：新手优先使用的一键修复脚本。
+2. `scripts/diagnose-codex-network.ps1`：检查系统代理、环境变量、常见 HTTP/SOCKS 端口、DNS、OpenAI 连通性、Codex 连接和疑似 TUN 网卡。
+3. `scripts/set-proxy-env.ps1`：手动设置代理环境变量。
+4. `scripts/clear-proxy-env.ps1`：回滚代理环境变量。
 
 ## 文档说明
 
-- [新手操作指南](./docs/beginner-guide.md)
-- [Windows Codex Reconnecting 排障手册](./docs/windows-codex-reconnecting.md)
-- [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
-- [其它 VPN 和代理工具怎么处理](./docs/other-vpn-and-proxy-tools.md)
+1. [新手操作指南](./docs/beginner-guide.md)
+2. [Windows Codex Reconnecting 排障手册](./docs/windows-codex-reconnecting.md)
+3. [Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)
+4. [其它 VPN 和代理工具怎么处理](./docs/other-vpn-and-proxy-tools.md)
 
 ## 一键修复做了什么
 
@@ -115,10 +115,10 @@ NO_PROXY
 
 需要 TUN 的典型情况：
 
-- Codex 明明设置了代理，还是会绕过代理。
-- 代理测试成功，但长回答持续重连。
-- DNS 返回异常地址，直连 OpenAI 一直失败。
-- 你希望命令行、Electron 应用和后台进程都更稳定地走代理规则。
+1. Codex 明明设置了代理，还是会绕过代理。
+2. 代理测试成功，但长回答持续重连。
+3. DNS 返回异常地址，直连 OpenAI 一直失败。
+4. 你希望命令行、Electron 应用和后台进程都更稳定地走代理规则。
 
 详细步骤看：[Clash Verge TUN 模式开启指南](./docs/tun-mode-clash-verge.md)。
 
@@ -136,9 +136,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\clear-proxy-env.ps1
 
 ## 安全提醒
 
-- 不要提交 OpenAI API key、GitHub token、Clash 订阅链接、代理节点信息。
-- 分享诊断输出前，检查是否包含用户名、内网 IP、cookie 或 token。
-- 本仓库脚本只修改当前 Windows 用户的代理环境变量，不会修改系统文件。
+1. 不要提交 OpenAI API key、GitHub token、Clash 订阅链接、代理节点信息。
+2. 分享诊断输出前，检查是否包含用户名、内网 IP、cookie 或 token。
+3. 本仓库脚本只修改当前 Windows 用户的代理环境变量，不会修改系统文件。
 
 ## License
 
